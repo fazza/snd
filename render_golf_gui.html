@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SND Bookings — Booking Bot</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green-deep:   #1a3a2a;
+      --green-mid:    #2d5a3d;
+      --green-bright: #4a8c5c;
+      --green-light:  #7ab893;
+      --cream:        #f5f0e8;
+      --gold:         #c9a84c;
+      --gold-light:   #e8c97a;
+      --mono:         'DM Mono', monospace;
+      --serif:        'Playfair Display', serif;
+    }
+    body {
+      background: var(--green-deep);
+      color: var(--cream);
+      font-family: var(--mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 64px;
+      background-image:
+        radial-gradient(ellipse at 10% 20%, rgba(74,140,92,0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 80%, rgba(201,168,76,0.08) 0%, transparent 50%);
+    }
+    header { text-align: center; margin-bottom: 40px; }
+    .flag-icon { font-size: 28px; animation: flagWave 3s ease-in-out infinite; display: inline-block; margin-bottom: 8px; }
+    @keyframes flagWave { 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
+    h1 { font-family: var(--serif); font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; letter-spacing: -0.02em; color: var(--cream); line-height: 1; }
+    h1 span { color: var(--gold); }
+    .subtitle { font-size: 0.75rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--green-light); margin-top: 10px; }
+    .gold-rule { width: 60px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 16px auto 0; }
+
+    /* ── Main booking form card ── */
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 4px;
+      width: 100%;
+      max-width: 680px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+      margin-bottom: 24px;
+    }
+    .card-header {
+      display: flex; align-items: center;
+      background: var(--green-mid);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+    }
+    .card-header-title { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cream); opacity: 0.7; }
+    .controls { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Round selector ── */
+    .round-selector label { display: block; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+    .select-wrapper { position: relative; }
+    .select-wrapper::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--gold); pointer-events: none; font-size: 0.8rem; }
+    select {
+      width: 100%; padding: 10px 36px 10px 14px;
+      background: rgba(0,0,0,0.25); border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 3px; color: var(--cream); font-family: var(--mono); font-size: 0.8rem;
+      appearance: none; cursor: pointer; transition: border-color 0.2s;
+    }
+    select:focus { outline: none; border-color: var(--gold); }
+    select:disabled { opacity: 0.5; cursor: not-allowed; }
+    .reload-btn {
+      margin-top: 8px; background: none; border: 1px solid rgba(201,168,76,0.2);
+      color: rgba(245,240,232,0.5); font-family: var(--mono); font-size: 0.65rem;
+      letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 14px;
+      border-radius: 2px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .reload-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .reload-icon { display: inline-block; transition: transform 0.4s; }
+    .reload-btn.spinning .reload-icon { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Players ── */
+    .section-label { display: block; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+    .players-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .player-checkbox { display: none; }
+    .player-label {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px 8px; border: 1px solid rgba(201,168,76,0.2); border-radius: 3px;
+      cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.2);
+      font-size: 0.78rem; color: rgba(245,240,232,0.5); user-select: none;
+    }
+    .player-label:hover { border-color: rgba(201,168,76,0.5); color: var(--cream); }
+    .player-checkbox:checked + .player-label { border-color: var(--gold); background: rgba(201,168,76,0.12); color: var(--cream); }
+    .player-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--green-mid); border: 2px solid rgba(201,168,76,0.2); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: border-color 0.2s; }
+    .player-checkbox:checked + .player-label .player-avatar { border-color: var(--gold); background: var(--green-bright); }
+
+    /* ── Time window ── */
+    .time-window-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 18px; }
+    .time-window-field { flex: 1; }
+    .time-window-field label { display: block; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+    .time-window-field input[type="time"] { width: 100%; background: var(--green-dark); border: 1px solid var(--green-mid); border-radius: 8px; color: var(--cream); font-size: 0.95rem; padding: 8px 12px; outline: none; box-sizing: border-box; }
+    .time-window-field input[type="time"]:focus { border-color: var(--gold); }
+
+    /* ── Action button ── */
+    .btn-run {
+      width: 100%; padding: 14px; background: linear-gradient(135deg, var(--green-mid), var(--green-bright));
+      border: 1px solid rgba(201,168,76,0.3); border-radius: 3px; color: var(--cream);
+      font-family: var(--serif); font-size: 1rem; letter-spacing: 0.05em;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-run:hover:not(:disabled) { background: linear-gradient(135deg, var(--green-bright), #5aaa70); border-color: var(--gold); box-shadow: 0 0 20px rgba(74,140,92,0.3); transform: translateY(-1px); }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Job cards ── */
+    #jobs-container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 20px; }
+
+    .job-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+
+    .job-header {
+      background: var(--green-mid);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+    }
+    .job-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .job-dot.waiting  { background: var(--gold-light); animation: pulse 1.5s infinite; }
+    .job-dot.running  { background: var(--gold); animation: pulse 0.8s infinite; }
+    .job-dot.done     { background: var(--green-light); }
+    .job-dot.error    { background: #e05555; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .job-title { font-family: var(--serif); font-size: 0.95rem; color: var(--cream); flex: 1; }
+    .job-players { font-size: 0.65rem; color: var(--green-light); letter-spacing: 0.05em; }
+    .job-dismiss { background: none; border: 1px solid rgba(245,240,232,0.12); color: rgba(245,240,232,0.35); font-family: var(--mono); font-size: 0.6rem; padding: 3px 8px; border-radius: 2px; cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase; transition: all 0.2s; }
+    .job-dismiss:hover { border-color: #e07777; color: #e07777; }
+
+    /* countdown inside job card */
+    .job-countdown {
+      padding: 10px 18px 6px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      border-bottom: 1px solid rgba(201,168,76,0.1);
+    }
+    .job-countdown.visible { display: flex; }
+    .job-countdown-value { font-size: 1.4rem; color: var(--gold-light); letter-spacing: 0.04em; }
+    .job-countdown-label { font-size: 0.62rem; color: rgba(245,240,232,0.3); letter-spacing: 0.12em; }
+
+    /* terminal inside job card */
+    .job-terminal { padding: 14px 18px; height: 200px; overflow-y: auto; font-size: 0.75rem; line-height: 1.65; color: rgba(245,240,232,0.75); background: rgba(0,0,0,0.15); }
+    .job-terminal::-webkit-scrollbar { width: 3px; }
+    .job-terminal::-webkit-scrollbar-thumb { background: var(--green-bright); border-radius: 2px; }
+
+    /* ── My Bookings modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1e4030; border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 6px; width: 90%; max-width: 560px; max-height: 80vh;
+      display: flex; flex-direction: column; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      animation: slideIn 0.2s ease;
+    }
+    .modal-header {
+      padding: 16px 20px; border-bottom: 1px solid rgba(201,168,76,0.15);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h2 { font-family: var(--serif); font-size: 1.1rem; color: var(--cream); }
+    .modal-close { background: none; border: none; color: rgba(245,240,232,0.4);
+      font-size: 1.2rem; cursor: pointer; padding: 4px 8px; transition: color 0.2s; }
+    .modal-close:hover { color: var(--cream); }
+    .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .modal-body::-webkit-scrollbar { width: 3px; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--green-bright); border-radius: 2px; }
+    .booking-entry {
+      padding: 12px 14px; border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 3px; margin-bottom: 8px; background: rgba(0,0,0,0.2);
+    }
+    .booking-entry-title { font-family: var(--serif); font-size: 0.9rem; color: var(--cream); margin-bottom: 3px; }
+    .booking-entry-detail { font-size: 0.7rem; color: var(--green-light); }
+    .modal-loading { text-align: center; padding: 32px; color: rgba(245,240,232,0.4); font-size: 0.8rem; letter-spacing: 0.1em; }
+    .modal-empty { text-align: center; padding: 32px; color: rgba(245,240,232,0.3); font-size: 0.8rem; }
+    .btn-bookings {
+      background: none; border: 1px solid rgba(201,168,76,0.25);
+      color: rgba(245,240,232,0.5); font-family: var(--mono); font-size: 0.65rem;
+      letter-spacing: 0.15em; text-transform: uppercase; padding: 5px 12px;
+      border-radius: 2px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-bookings:hover { border-color: var(--gold); color: var(--gold); }
+    .log-line { display: block; }
+    .log-line.success { color: var(--green-light); }
+    .log-line.error   { color: #e07777; }
+    .log-line.gold    { color: var(--gold-light); }
+    .log-line.dim     { color: rgba(245,240,232,0.3); }
+
+    /* booked result inside job card */
+    .job-result { display: none; padding: 12px 18px; background: rgba(201,168,76,0.08); border-top: 1px solid rgba(201,168,76,0.25); }
+    .job-result.visible { display: block; }
+    .job-result-label { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+    .job-result-time { font-family: var(--serif); font-size: 1.6rem; font-weight: 700; color: var(--cream); }
+    .job-result-detail { font-size: 0.7rem; color: var(--green-light); margin-top: 2px; }
+
+    footer { margin-top: 32px; font-size: 0.65rem; letter-spacing: 0.1em; color: rgba(245,240,232,0.2); text-align: center; text-transform: uppercase; }
+
+    /* ── Nav bar ── */
+    .nav-bar { margin-top: 14px; display: flex; justify-content: center; gap: 10px; }
+    .nav-btn { background: transparent; border: 1px solid rgba(201,168,76,0.4); color: var(--gold); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 18px; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+    .nav-btn:hover { background: rgba(201,168,76,0.12); border-color: var(--gold); }
+
+    /* ── Preferences modal ── */
+    .prefs-modal { width: min(680px, 96vw); max-height: 85vh; display: flex; flex-direction: column; }
+    .prefs-body { flex: 1; overflow-y: auto; padding: 0 28px 12px; }
+    .prefs-hint { font-size: 0.78rem; color: var(--green-light); margin: 0 0 16px; line-height: 1.5; }
+    .prefs-hint strong { color: var(--cream); }
+    .prefs-search-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .prefs-search { flex: 1; background: var(--green-dark); border: 1px solid var(--green-mid); border-radius: 8px; color: var(--cream); font-size: 0.88rem; padding: 9px 14px; outline: none; }
+    .prefs-search:focus { border-color: var(--gold); }
+    .prefs-search::placeholder { color: rgba(245,240,232,0.3); }
+    .prefs-load-btn { background: var(--green-mid); border: 1px solid var(--gold); color: var(--gold); font-size: 0.72rem; letter-spacing: 0.1em; padding: 9px 16px; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+    .prefs-load-btn:hover { background: rgba(201,168,76,0.15); }
+    .prefs-load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .prefs-filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .pref-filter-btn { background: transparent; border: 1px solid var(--green-mid); color: var(--green-light); font-size: 0.68rem; letter-spacing: 0.1em; padding: 5px 14px; border-radius: 14px; cursor: pointer; transition: all 0.2s; }
+    .pref-filter-btn.active, .pref-filter-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
+    .members-list { display: flex; flex-direction: column; gap: 4px; min-height: 80px; }
+    .member-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid transparent; transition: background 0.15s; }
+    .member-row:hover { background: rgba(255,255,255,0.06); }
+    .member-row.pref-always { border-color: rgba(201,168,76,0.3); background: rgba(201,168,76,0.06); }
+    .member-row.pref-never { border-color: rgba(200,80,80,0.3); background: rgba(200,80,80,0.04); }
+    .member-name-text { font-size: 0.85rem; color: var(--cream); flex: 1; }
+    .pref-toggle { display: flex; gap: 6px; }
+    .pref-btn { background: transparent; border: 1px solid var(--green-mid); color: var(--green-light); font-size: 0.68rem; padding: 4px 10px; border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+    .pref-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .pref-btn.active-always { background: rgba(201,168,76,0.2); border-color: var(--gold); color: var(--gold); }
+    .pref-btn.active-never  { background: rgba(200,80,80,0.2); border-color: #c85050; color: #e08080; }
+    .prefs-footer { padding: 16px 28px; border-top: 1px solid var(--green-mid); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+    .prefs-status { font-size: 0.75rem; color: var(--green-light); }
+    .btn-save-prefs { background: linear-gradient(135deg, var(--green-mid), var(--green-bright)); border: 1px solid var(--gold); color: var(--cream); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 10px 22px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-save-prefs:hover { background: linear-gradient(135deg, var(--green-bright), #5aaa70); }
+    .members-loading { padding: 24px; text-align: center; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="flag-icon">⛳</div>
+    <h1>SND <span>Bookings</span></h1>
+    <p class="subtitle">Lower your handicap and raise your DRS</p>
+    <div class="gold-rule"></div>
+    <div class="nav-bar">
+      <button class="nav-btn" onclick="openPreferences()">⚙️ Member Preferences</button>
+      <a class="nav-btn" href="/logout" style="text-decoration:none">🚪 Sign Out</a>
+    </div>
+  </header>
+
+  <!-- Booking form -->
+  <div class="card">
+    <div class="card-header" style="justify-content: space-between;">
+      <span class="card-header-title">New Booking</span>
+      <button class="btn-bookings" onclick="openBookings()">📋 My Bookings</button>
+    </div>
+    <div class="controls">
+
+      <div class="round-selector">
+        <label for="roundSelect">What round do you want to book?</label>
+        <div class="select-wrapper">
+          <select id="roundSelect" disabled>
+            <option value="">— Loading rounds… —</option>
+          </select>
+        </div>
+        <button class="reload-btn" id="reloadBtn" onclick="loadEvents()">
+          <span class="reload-icon">↻</span>
+          <span id="reloadText">Refresh rounds</span>
+        </button>
+      </div>
+
+      <div class="players-section">
+        <label class="section-label">Who is playing?</label>
+        <div class="players-grid">
+          <input type="checkbox" class="player-checkbox" id="player-ross" value="Ross Farrelly" checked>
+          <label class="player-label" for="player-ross"><span class="player-avatar">🏌️</span>Ross</label>
+
+          <input type="checkbox" class="player-checkbox" id="player-dan" value="Daniel Pryor">
+          <label class="player-label" for="player-dan"><span class="player-avatar">🏌️</span>Dan</label>
+
+          <input type="checkbox" class="player-checkbox" id="player-jose" value="Jose De Sousa">
+          <label class="player-label" for="player-jose"><span class="player-avatar">🏌️</span>Jose</label>
+
+          <input type="checkbox" class="player-checkbox" id="player-hong" value="Hong Zhong">
+          <label class="player-label" for="player-hong"><span class="player-avatar">🏌️</span>Hong</label>
+        </div>
+      </div>
+
+      <div class="time-window-row">
+        <div class="time-window-field">
+          <label for="timeFrom">Earliest tee time</label>
+          <input type="time" id="timeFrom" value="05:00" onchange="validateTimeWindow()">
+        </div>
+        <div class="time-window-field">
+          <label for="timeTo">Latest tee time</label>
+          <input type="time" id="timeTo" value="10:00" onchange="validateTimeWindow()">
+        </div>
+      </div>
+
+      <button class="btn-run" id="btnRun" onclick="handleRun()" disabled>
+        <span>🏌️</span><span id="btnLabel">Book Tee Time</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Job cards appear here -->
+  <div id="jobs-container"></div>
+
+  <footer>SND Bookings &mdash; Members Only</footer>
+
+  <!-- My Bookings Modal -->
+  <div class="modal-overlay" id="bookingsModal" onclick="if(event.target===this)closeBookings()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⛳ My Current Bookings</h2>
+        <button class="modal-close" onclick="closeBookings()">✕</button>
+      </div>
+      <div class="modal-body" id="bookingsBody">
+        <div class="modal-loading">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const roundSelect = document.getElementById('roundSelect');
+    const reloadBtn   = document.getElementById('reloadBtn');
+    const reloadText  = document.getElementById('reloadText');
+    const btnRun      = document.getElementById('btnRun');
+    const btnLabel    = document.getElementById('btnLabel');
+    const jobsContainer = document.getElementById('jobs-container');
+
+    let eventsData = [];
+
+    // ── Load rounds ──────────────────────────────────────
+    async function openBookings() {
+      document.getElementById('bookingsModal').classList.add('open');
+      const body = document.getElementById('bookingsBody');
+      body.innerHTML = '<div class="modal-loading">🔄 Logging in & fetching bookings…</div>';
+      try {
+        const res  = await fetch('/bookings');
+        const data = await res.json();
+        if (data.error) {
+          body.innerHTML = `<div class="modal-empty">⚠️ ${data.error}</div>`;
+          return;
+        }
+        const bookings = data.bookings || [];
+        if (!bookings.length) {
+          body.innerHTML = '<div class="modal-empty">No upcoming bookings found.</div>';
+          return;
+        }
+        const isTime = s => /^\d{1,2}:\d{2}(am|pm)$/i.test(s.trim());
+        const paired = [];
+        for (let i = 0; i < bookings.length; i++) {
+          const b = bookings[i];
+          // Structured format from improved fetch script
+          if (b.name || b.date) {
+            paired.push(b);
+          } else {
+            // Legacy raw format - pair up time + name
+            const a = (b.raw || '').trim();
+            const next = (bookings[i+1]?.raw || '').trim();
+            if (isTime(a) && next && !isTime(next)) {
+              paired.push({ time: a, name: next }); i++;
+            } else if (!isTime(a) && a) {
+              paired.push({ time: '', name: a });
+            }
+          }
+        }
+        body.innerHTML = paired.length ? paired.map(p => `
+          <div class="booking-entry">
+            <div class="booking-entry-title" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+              ${p.date ? `<span style="color:var(--green-light);font-size:0.75rem">${p.date}</span>` : ''}
+              ${p.time ? `<span style="color:var(--gold-light);font-family:var(--mono);font-size:0.85rem">${p.time}</span>` : ''}
+              <span>${p.name || p.raw || ''}</span>
+            </div>
+          </div>`).join('') : '<div class="modal-empty">No upcoming bookings found.</div>';
+      } catch(e) {
+        body.innerHTML = `<div class="modal-empty">⚠️ Cannot connect to server</div>`;
+      }
+    }
+
+    function closeBookings() {
+      document.getElementById('bookingsModal').classList.remove('open');
+    }
+
+    async function loadEvents() {
+      roundSelect.disabled = true;
+      btnRun.disabled = true;
+      reloadBtn.classList.add('spinning');
+      reloadText.textContent = 'Loading…';
+      roundSelect.innerHTML = '<option value="">— Logging in & loading rounds… —</option>';
+      try {
+        const res  = await fetch('/events');
+        const data = await res.json();
+        if (data.error) {
+          roundSelect.innerHTML = `<option value="">⚠️ Error: ${data.error}</option>`;
+          return;
+        }
+        eventsData = data.events;
+        roundSelect.innerHTML = '<option value="">— Select a round —</option>';
+        if (!eventsData.length) {
+          roundSelect.innerHTML = '<option value="">— No upcoming rounds found —</option>';
+        } else {
+          eventsData.forEach((ev, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = `${ev.status === 'OPEN' ? '🟢' : '🔒'} ${ev.label}`;
+            roundSelect.appendChild(opt);
+          });
+        }
+        roundSelect.disabled = false;
+      } catch (e) {
+        roundSelect.innerHTML = '<option value="">⚠️ Cannot connect to server</option>';
+      } finally {
+        reloadBtn.classList.remove('spinning');
+        reloadText.textContent = 'Refresh rounds';
+      }
+    }
+
+    roundSelect.addEventListener('change', () => {
+      const ev = eventsData[parseInt(roundSelect.value)];
+      if (!ev) { btnRun.disabled = true; return; }
+      btnRun.disabled = false;
+      btnLabel.textContent = ev.status === 'LOCKED' ? 'Schedule Booking' : 'Book Tee Time';
+      btnRun.children[0].textContent = ev.status === 'LOCKED' ? '⏰' : '🏌️';
+    });
+
+    // ── Handle button click ──────────────────────────────
+    function validateTimeWindow() {
+      const fromEl = document.getElementById('timeFrom');
+      const toEl   = document.getElementById('timeTo');
+      if (!fromEl.value || !toEl.value) return;
+      if (toEl.value <= fromEl.value) {
+        // Push latest to be 30 mins after earliest
+        const [h, m] = fromEl.value.split(':').map(Number);
+        const total  = h * 60 + m + 30;
+        const newH   = String(Math.min(Math.floor(total / 60), 23)).padStart(2, '0');
+        const newM   = String(total % 60).padStart(2, '0');
+        toEl.value   = `${newH}:${newM}`;
+        toEl.style.borderColor = 'var(--gold)';
+        setTimeout(() => { toEl.style.borderColor = ''; }, 1500);
+      }
+    }
+
+    function handleRun() {
+      const idx = parseInt(roundSelect.value);
+      const ev  = eventsData[idx];
+      if (!ev) return;
+
+      const players = Array.from(document.querySelectorAll('.player-checkbox:checked')).map(cb => cb.value);
+      if (!players.length) { alert('Please select at least one player.'); return; }
+
+      const timeFrom = document.getElementById('timeFrom').value; // "HH:MM"
+      const timeTo   = document.getElementById('timeTo').value;
+      if (timeFrom && timeTo && timeTo <= timeFrom) {
+        alert('Latest tee time must be after earliest tee time.');
+        return;
+      }
+
+      const jobId = 'job-' + Date.now();
+
+      if (ev.status === 'LOCKED') {
+        createJobCard(jobId, ev, players, 'waiting');
+        scheduleJob(jobId, ev, players, timeFrom, timeTo);
+      } else {
+        createJobCard(jobId, ev, players, 'running');
+        executeJob(jobId, ev, players, timeFrom, timeTo);
+      }
+    }
+
+    // ── Create a job card ────────────────────────────────
+    function createJobCard(jobId, ev, players, initialState) {
+      const card = document.createElement('div');
+      card.className = 'job-card';
+      card.id = jobId;
+      card.innerHTML = `
+        <div class="job-header">
+          <div class="job-dot ${initialState}" id="${jobId}-dot"></div>
+          <div>
+            <div class="job-title">${ev.label}</div>
+            <div class="job-players">👥 ${players.join(', ')}</div>
+          </div>
+          <button class="job-dismiss" onclick="dismissJob('${jobId}')">✕ Cancel</button>
+        </div>
+        <div class="job-countdown" id="${jobId}-countdown">
+          <div class="job-countdown-value" id="${jobId}-countdown-value">—</div>
+          <div class="job-countdown-label" id="${jobId}-countdown-label">—</div>
+        </div>
+        <div class="job-terminal" id="${jobId}-terminal" style="display:none"></div>
+        <div class="job-result" id="${jobId}-result">
+          <div class="job-result-label">⛳ Tee Time Booked</div>
+          <div class="job-result-time" id="${jobId}-result-time">—</div>
+          <div class="job-result-detail" id="${jobId}-result-detail"></div>
+        </div>
+      `;
+      jobsContainer.prepend(card);
+    }
+
+    function jobLog(jobId, text) {
+      const terminal = document.getElementById(`${jobId}-terminal`);
+      if (!terminal) return;
+      const placeholder = terminal.querySelector('.dim');
+      if (placeholder) placeholder.remove();
+
+      if (text.includes('Skipping')) return;
+      const line = document.createElement('span');
+      line.className = 'log-line';
+      const isError = text.includes('❌') || text.toLowerCase().includes('error');
+      if (text.includes('✅') || text.includes('confirmed') || text.includes('successful')) line.classList.add('success');
+      else if (isError) line.classList.add('error');
+      else if (text.includes('🚀') || text.includes('⛳') || text.includes('📧') || text.includes('Booking:')) line.classList.add('gold');
+      else if (text.startsWith('   ')) line.classList.add('dim');
+      // Only reveal terminal for errors
+      if (isError) terminal.style.display = '';
+      line.textContent = text;
+      terminal.appendChild(line);
+      terminal.appendChild(document.createElement('br'));
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Show booked result
+      const timeMatch = text.match(/(\d{1,2}:\d{2}\s*[AP]M)/i);
+      if ((text.includes('✅ Selected tee time') || text.includes('✅ Booking:')) && timeMatch) {
+        const result = document.getElementById(`${jobId}-result`);
+        if (result) {
+          document.getElementById(`${jobId}-result-time`).textContent = timeMatch[1];
+          result.classList.add('visible');
+        }
+      }
+    }
+
+    function setJobDot(jobId, state) {
+      const dot = document.getElementById(`${jobId}-dot`);
+      if (dot) dot.className = `job-dot ${state}`;
+    }
+
+    function dismissJob(jobId) {
+      // Cancel running process on server if active
+      fetch(`/cancel/${jobId}`, { method: 'POST' }).catch(() => {});
+      // Cancel any countdown timer
+      if (window._jobTimers && window._jobTimers[jobId]) {
+        clearInterval(window._jobTimers[jobId]);
+        delete window._jobTimers[jobId];
+      }
+      const card = document.getElementById(jobId);
+      if (card) card.remove();
+    }
+
+    // ── Schedule a LOCKED job ────────────────────────────
+    function scheduleJob(jobId, ev, players, timeFrom, timeTo) {
+      const roundDate = new Date(ev.date_iso + 'T00:00:00');
+      const opensAt   = new Date(roundDate);
+      opensAt.setDate(opensAt.getDate() - 7);
+      opensAt.setHours(18, 30, 0, 0);
+      const startAt   = new Date(opensAt.getTime() - 2 * 60 * 1000); // 2 mins before
+
+      const countdownEl = document.getElementById(`${jobId}-countdown`);
+      const valueEl     = document.getElementById(`${jobId}-countdown-value`);
+      const labelEl     = document.getElementById(`${jobId}-countdown-label`);
+      countdownEl.classList.add('visible');
+      labelEl.textContent = `Polling starts ${opensAt.toLocaleDateString('en-AU', {weekday:'short', day:'numeric', month:'short'})} at 6:28 PM`;
+
+      if (!window._jobTimers) window._jobTimers = {};
+
+      window._jobTimers[jobId] = setInterval(() => {
+        const diff = startAt - new Date();
+        if (diff <= 0) {
+          clearInterval(window._jobTimers[jobId]);
+          delete window._jobTimers[jobId];
+          countdownEl.classList.remove('visible');
+          jobLog(jobId, `🚀 6:28 PM — starting polling now!`);
+          setJobDot(jobId, 'running');
+          executeJob(jobId, ev, players, timeFrom, timeTo);
+          return;
+        }
+        const days = Math.floor(diff / 86400000);
+        const hrs  = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        let display = '';
+        if (days > 0) display += `${days}d `;
+        if (hrs > 0)  display += `${String(hrs).padStart(2,'0')}h `;
+        display += `${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
+        valueEl.textContent = display;
+      }, 1000);
+    }
+
+    // ── Execute a booking job ────────────────────────────
+    async function executeJob(jobId, ev, players, timeFrom, timeTo) {
+      setJobDot(jobId, 'running');
+      jobLog(jobId, `🏌️  Booking: ${ev.label}`);
+      jobLog(jobId, `👥  Players: ${players.join(', ')}`);
+      if (timeFrom || timeTo) jobLog(jobId, `⏰  Window: ${timeFrom||'any'} → ${timeTo||'any'}`);
+
+      try {
+        const res = await fetch('/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event: ev, players, job_id: jobId, time_from: timeFrom, time_to: timeTo })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          jobLog(jobId, `❌ ${err.error || 'Could not start'}`);
+          setJobDot(jobId, 'error');
+          updateDismissBtn(jobId);
+          return;
+        }
+      } catch (e) {
+        jobLog(jobId, `❌ Cannot connect: ${e.message}`);
+        setJobDot(jobId, 'error');
+        updateDismissBtn(jobId);
+        return;
+      }
+
+      const es = new EventSource(`/stream/${jobId}`);
+      es.onmessage = (e) => {
+        if (e.data === '__DONE__') {
+          es.close();
+          const terminal = document.getElementById(`${jobId}-terminal`);
+          const hasError = terminal && terminal.querySelector('.error');
+          const hasResult = document.getElementById(`${jobId}-result`)?.classList.contains('visible');
+          setJobDot(jobId, hasResult ? 'done' : hasError ? 'error' : 'done');
+          updateDismissBtn(jobId);
+        } else if (e.data === '__TIMEOUT__') {
+          es.close();
+          jobLog(jobId, '⚠️ Stream timed out');
+          setJobDot(jobId, 'error');
+          updateDismissBtn(jobId);
+        } else {
+          jobLog(jobId, e.data);
+        }
+      };
+      es.onerror = () => {
+        es.close();
+        jobLog(jobId, '⚠️ Connection lost');
+        setJobDot(jobId, 'error');
+        updateDismissBtn(jobId);
+      };
+    }
+
+    function updateDismissBtn(jobId) {
+      const btn = document.querySelector(`#${jobId} .job-dismiss`);
+      if (btn) btn.textContent = '✕ Dismiss';
+    }
+
+    loadEvents();
+
+    // ── Preferences ──────────────────────────────────────
+    let allMembers  = [];   // full list from server
+    let preferences = {};   // { memberName: 'always'|'never' }
+    let activeFilter = 'all';
+
+    async function openPreferences() {
+      document.getElementById('prefsOverlay').classList.add('visible');
+      // Load saved preferences
+      try {
+        const res = await fetch('/preferences');
+        preferences = await res.json();
+        renderMembers();
+      } catch(e) {}
+    }
+
+    function closePreferences(e) {
+      if (e && e.target !== document.getElementById('prefsOverlay')) return;
+      document.getElementById('prefsOverlay').classList.remove('visible');
+    }
+
+    async function loadMembers() {
+      const btn = document.getElementById('loadMembersBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Loading...';
+      document.getElementById('membersList').innerHTML = '<div class="members-loading dim">Logging in and fetching member directory... this may take 20-30 seconds.</div>';
+      try {
+        const res = await fetch('/members');
+        const data = await res.json();
+        if (data.error) {
+          document.getElementById('membersList').innerHTML = `<div class="members-loading dim">❌ ${data.error}</div>`;
+          return;
+        }
+        allMembers = data.members || [];
+        renderMembers();
+        document.getElementById('prefsStatus').textContent = `${allMembers.length} members loaded`;
+      } catch(e) {
+        document.getElementById('membersList').innerHTML = `<div class="members-loading dim">❌ Could not connect to server</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh';
+      }
+    }
+
+    function setFilter(f, el) {
+      activeFilter = f;
+      document.querySelectorAll('.pref-filter-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      renderMembers();
+    }
+
+    function filterMembers() {
+      renderMembers();
+    }
+
+    function setPref(name, value) {
+      if (preferences[name] === value) {
+        delete preferences[name];  // toggle off
+      } else {
+        preferences[name] = value;
+      }
+      renderMembers();
+    }
+
+    function renderMembers() {
+      const query  = (document.getElementById('memberSearch').value || '').toLowerCase();
+      const list   = document.getElementById('membersList');
+
+      // Build display list: flagged members always show, unflagged only if in allMembers or search matches
+      const flagged = Object.keys(preferences);
+      const pool = allMembers.length > 0 ? allMembers : flagged;
+
+      let filtered = pool.filter(name => {
+        if (query && !name.toLowerCase().includes(query)) return false;
+        if (activeFilter === 'always') return preferences[name] === 'always';
+        if (activeFilter === 'never')  return preferences[name] === 'never';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="members-loading dim">' +
+          (allMembers.length === 0 ? 'Click "Load Members" to fetch the directory.' : 'No members match your search.') +
+          '</div>';
+        return;
+      }
+
+      // Sort: always first, never second, rest alphabetical
+      filtered.sort((a, b) => {
+        const pa = preferences[a] || 'none';
+        const pb = preferences[b] || 'none';
+        if (pa === pb) return a.localeCompare(b);
+        if (pa === 'always') return -1;
+        if (pb === 'always') return 1;
+        if (pa === 'never')  return -1;
+        if (pb === 'never')  return 1;
+        return 0;
+      });
+
+      list.innerHTML = filtered.map(name => {
+        const pref  = preferences[name] || 'none';
+        const rowCls = pref === 'always' ? 'pref-always' : pref === 'never' ? 'pref-never' : '';
+        const alwaysCls = pref === 'always' ? 'active-always' : '';
+        const neverCls  = pref === 'never'  ? 'active-never'  : '';
+        const escaped = name.replace(/'/g, "&#39;");
+        return `<div class="member-row ${rowCls}" id="mrow-${CSS.escape(name)}">
+          <span class="member-name-text">${name}</span>
+          <div class="pref-toggle">
+            <button class="pref-btn ${alwaysCls}" onclick="setPref('${escaped}','always')" title="Always book with this person">⭐ Always</button>
+            <button class="pref-btn ${neverCls}"  onclick="setPref('${escaped}','never')"  title="Avoid booking with this person">🚫 Never</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function savePreferences() {
+      const statusEl = document.getElementById('prefsStatus');
+      statusEl.textContent = 'Saving...';
+      try {
+        await fetch('/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preferences)
+        });
+        const count = Object.keys(preferences).length;
+        statusEl.textContent = `✅ Saved ${count} preference(s)`;
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+      } catch(e) {
+        statusEl.textContent = '❌ Save failed';
+      }
+    }
+  </script>
+  <!-- ── Preferences Modal ─────────────────────────── -->
+  <div class="modal-overlay" id="prefsOverlay" onclick="closePreferences(event)">
+    <div class="modal prefs-modal">
+      <div class="modal-header">
+        <h2>⚙️ Member Preferences</h2>
+        <button class="modal-close" onclick="closePreferences()">✕</button>
+      </div>
+      <div class="prefs-body">
+        <p class="prefs-hint">Set preferences to control who the bot books with. <strong>⭐ Always</strong> = book with them whenever possible. <strong>🚫 Never</strong> = only book with them as a last resort.</p>
+
+        <div class="prefs-search-row">
+          <input type="text" id="memberSearch" class="prefs-search" placeholder="Search members..." oninput="filterMembers()">
+          <button class="prefs-load-btn" onclick="loadMembers()" id="loadMembersBtn">🔄 Load Members</button>
+        </div>
+
+        <div class="prefs-filter-row">
+          <button class="pref-filter-btn active" onclick="setFilter('all', this)">All</button>
+          <button class="pref-filter-btn" onclick="setFilter('always', this)">⭐ Always</button>
+          <button class="pref-filter-btn" onclick="setFilter('never', this)">🚫 Never</button>
+        </div>
+
+        <div id="membersList" class="members-list">
+          <div class="members-loading dim">Click "Load Members" to fetch the member directory...</div>
+        </div>
+      </div>
+      <div class="prefs-footer">
+        <span id="prefsStatus" class="prefs-status"></span>
+        <button class="btn-save-prefs" onclick="savePreferences()">💾 Save Preferences</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
