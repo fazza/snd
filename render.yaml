@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: roseville-golf-booking
+    runtime: docker
+    plan: starter          # cheapest paid plan — free tier sleeps after 15 min
+    region: singapore      # closest to Sydney
+    dockerfilePath: ./Dockerfile
+
+    # Persistent disk for preferences + member cache
+    disk:
+      name: golf-data
+      mountPath: /data
+      sizeGB: 1
+
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true   # Render auto-generates a secure random value
+      - key: DATA_DIR
+        value: /data

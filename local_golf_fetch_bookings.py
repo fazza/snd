@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 Helper script: logs in, scrapes current bookings, prints JSON to stdout.
@@ -22,8 +23,8 @@ import time as _t
 
 LOGIN_URL         = "https://www.rosevillegolf.com.au/web/pages/login"
 MY_BOOKINGS_URL   = "https://www.rosevillegolf.com.au/group/pages/my-bookings"
-USERNAME          = "4291"
-PASSWORD          = "NewcastleTaree1!"
+USERNAME          = os.environ.get("CLUB_USERNAME", "4291")
+PASSWORD          = os.environ.get("CLUB_PASSWORD", "")
 USERNAME_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_login"
 PASSWORD_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_password"
 
@@ -34,7 +35,6 @@ def main():
     options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
-    options.add_argument("--disable-setuid-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")

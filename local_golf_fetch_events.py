@@ -21,8 +21,8 @@ from selenium.webdriver.chrome.options import Options
 
 LOGIN_URL         = "https://www.rosevillegolf.com.au/web/pages/login"
 BOOK_A_ROUND      = "https://www.rosevillegolf.com.au/group/pages/book-a-round"
-USERNAME          = "4291"
-PASSWORD          = "NewcastleTaree1!"
+USERNAME          = os.environ.get("CLUB_USERNAME", "4291")
+PASSWORD          = os.environ.get("CLUB_PASSWORD", "")
 USERNAME_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_login"
 PASSWORD_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_password"
 
@@ -60,7 +60,6 @@ def main():
     options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
-    options.add_argument("--disable-setuid-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -179,6 +178,12 @@ def main():
             })
 
         events.sort(key=lambda e: e['date_iso'])
+
+        # If server only wants events after a certain date (cache edge check), filter here
+        fetch_from = os.environ.get('FETCH_FROM_DATE', '').strip()
+        if fetch_from:
+            events = [e for e in events if e['date_iso'] > fetch_from]
+
         # Print JSON to stdout — server reads this
         print("EVENTS_JSON:" + json.dumps(events[:40]))
 

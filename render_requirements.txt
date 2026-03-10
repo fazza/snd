@@ -1,5 +1,0 @@
-flask
-selenium
-chromedriver-autoinstaller
-certifi
-requests

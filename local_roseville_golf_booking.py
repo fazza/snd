@@ -40,8 +40,8 @@ import chromedriver_autoinstaller
 # ── Config ──────────────────────────────────────────────
 LOGIN_URL      = "https://www.rosevillegolf.com.au/web/pages/login"
 BOOK_A_ROUND   = "https://www.rosevillegolf.com.au/group/pages/book-a-round"
-USERNAME       = "4291"
-PASSWORD       = "NewcastleTaree1!"
+USERNAME       = os.environ.get("CLUB_USERNAME", "4291")
+PASSWORD       = os.environ.get("CLUB_PASSWORD", "")
 USERNAME_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_login"
 PASSWORD_FIELD_ID = "_com_liferay_login_web_portlet_LoginPortlet_password"
 # Email config
@@ -75,7 +75,7 @@ def parse_tee_time(time_str):
             return None
 
 
-def send_email(tee_time_str, event_date, success=True):
+def send_email(tee_time_str, event_date, success=True, players=None):
     msg = MIMEMultipart()
     msg["From"]    = EMAIL_SENDER
     msg["To"]      = EMAIL_RECIPIENT
@@ -84,9 +84,9 @@ def send_email(tee_time_str, event_date, success=True):
         msg["Subject"] = f"⛳ Tee Time Booked: {tee_time_str} on {event_date}"
         body = (
             f"Your tee time has been successfully booked!\n\n"
-            f"Date : {event_date}\n"
-            f"Time : {tee_time_str}\n"
-            f"Group: 4 players\n\n"
+            f"Date  : {event_date}\n"
+            f"Time  : {tee_time_str}\n"
+            f"Group : {chr(10).join(players) if players else 'Unknown'}\n\n"
             f"See you on the course! 🏌️"
         )
     else:
@@ -118,7 +118,6 @@ def main():
     options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
-    options.add_argument("--disable-setuid-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -667,7 +666,7 @@ def main():
             return
 
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        print(f"\n✅ Booking confirmed!")
+        print(f"\n✅ Booking: {booked_time_text} confirmed!")
         print(f"   Now on : {driver.current_url}")
         print(f"   Title  : {driver.title}")
 
@@ -676,7 +675,8 @@ def main():
         send_email(
             tee_time_str=booked_time.strftime("%I:%M %p"),
             event_date=target_date.strftime("%A %d %B %Y"),
-            success=True
+            success=True,
+            players=selected_players
         )
 
     except Exception as e:
