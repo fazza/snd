@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: golf-booking-bot
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: USERS_JSON
+        sync: false        # Set in Render dashboard — your initial users
+      - key: MAX_USERS
+        value: "4"         # Maximum number of accounts allowed
