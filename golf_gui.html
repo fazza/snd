@@ -366,6 +366,25 @@
     .login-field input:focus { outline: none; border-color: var(--gold); }
     .login-field input::placeholder { color: rgba(245,240,232,0.2); }
     .login-error { font-size: 0.72rem; color: #e07777; text-align: center; min-height: 1.1em; }
+    .remember-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(245,240,232,0.45); cursor: pointer; user-select: none;
+    }
+    .remember-row input[type="checkbox"] { display: none; }
+    .remember-box {
+      width: 16px; height: 16px; border: 1px solid rgba(201,168,76,0.35);
+      border-radius: 2px; background: rgba(0,0,0,0.25); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .remember-row input[type="checkbox"]:checked + .remember-box {
+      background: rgba(201,168,76,0.2); border-color: var(--gold);
+    }
+    .remember-row input[type="checkbox"]:checked + .remember-box::after {
+      content: '✓'; color: var(--gold); font-size: 11px; line-height: 1;
+    }
+    .login-card.signup-mode .remember-row { display: none; }
     .btn-login {
       width: 100%; padding: 12px; margin-top: 4px;
       background: linear-gradient(135deg, var(--green-mid), var(--green-bright));
@@ -514,13 +533,15 @@
         <p>Members Only</p>
       </div>
       <div class="login-body">
+        <!-- Real <form> so browsers offer to save/autofill username+password -->
+        <form id="loginForm" action="#" onsubmit="doLogin(); return false;" autocomplete="on">
         <div class="login-field">
           <label>Member Number</label>
-          <input id="loginUsername" type="text" placeholder="e.g. 4291" autocomplete="username">
+          <input id="loginUsername" name="username" type="text" placeholder="e.g. 4291" autocomplete="username">
         </div>
         <div class="login-field">
           <label>Password</label>
-          <input id="loginPassword" type="password" placeholder="Your club password" autocomplete="current-password">
+          <input id="loginPassword" name="password" type="password" placeholder="Your club password" autocomplete="current-password">
         </div>
         <div class="login-field signup-only">
           <label>Your Name</label>
@@ -528,10 +549,16 @@
         </div>
         <div class="login-field signup-only">
           <label>Invite Code</label>
-          <input id="signupInviteCode" type="password" placeholder="Ask Ross for this">
+          <input id="signupInviteCode" type="password" placeholder="Ask Ross for this" autocomplete="off">
         </div>
+        <label class="remember-row login-only">
+          <input type="checkbox" id="rememberMe">
+          <span class="remember-box"></span>
+          Remember me
+        </label>
         <div class="login-error" id="loginError"></div>
-        <button class="btn-login" id="btnLogin" onclick="doLogin()">Sign In</button>
+        <button class="btn-login" id="btnLogin" type="submit">Sign In</button>
+        </form>
         <div class="login-toggle">
           <span class="login-only">New user? <a onclick="toggleSignup(true)">Create account</a></span>
           <span class="signup-only">Already have an account? <a onclick="toggleSignup(false)">Sign in</a></span>
@@ -568,7 +595,14 @@
     function showLogin() {
       document.getElementById('loginOverlay').classList.add('open');
       document.getElementById('appContent').style.visibility = 'hidden';
-      setTimeout(() => document.getElementById('loginUsername').focus(), 100);
+      loadRemembered();
+      setTimeout(() => {
+        const u = document.getElementById('loginUsername');
+        const p = document.getElementById('loginPassword');
+        if (u.value && p.value) { document.getElementById('btnLogin').focus(); }
+        else if (u.value)       { p.focus(); }
+        else                    { u.focus(); }
+      }, 100);
     }
 
     function showApp(name) {
@@ -598,10 +632,42 @@
       document.getElementById('loginError').textContent = '';
     }
 
+    // ── Remember Me ─────────────────────────────────────
+    // Credentials are stored per-user so multiple accounts can share a device.
+    // 'golf_last_user' tracks which user was most recently remembered, so we
+    // know which per-user key to load on the next visit.
+    function loadRemembered() {
+      try {
+        const lastUser = localStorage.getItem('golf_last_user');
+        if (!lastUser) return;
+        const saved = localStorage.getItem('golf_remember_' + lastUser);
+        if (!saved) return;
+        const { username, password } = JSON.parse(saved);
+        if (username) document.getElementById('loginUsername').value = username;
+        if (password) document.getElementById('loginPassword').value = password;
+        document.getElementById('rememberMe').checked = true;
+      } catch(e) {}
+    }
+    function saveRemembered(username, password) {
+      try {
+        localStorage.setItem('golf_remember_' + username, JSON.stringify({ username, password }));
+        localStorage.setItem('golf_last_user', username);
+      } catch(e) {}
+    }
+    function clearRemembered(username) {
+      try {
+        localStorage.removeItem('golf_remember_' + username);
+        // Only clear last_user pointer if it was pointing at this user
+        if (localStorage.getItem('golf_last_user') === username) {
+          localStorage.removeItem('golf_last_user');
+        }
+      } catch(e) {}
+    }
     async function doLogin() {
       if (_signupMode) { doSignup(); return; }
       const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
+      const remember = document.getElementById('rememberMe').checked;
       const errEl    = document.getElementById('loginError');
       const btn      = document.getElementById('btnLogin');
       errEl.textContent = '';
@@ -619,7 +685,10 @@
           btn.textContent = 'Sign In'; btn.disabled = false;
           return;
         }
-        document.getElementById('loginPassword').value = '';
+        // Save or clear remembered credentials
+        if (remember) { saveRemembered(username, password); }
+        else          { clearRemembered(username); }
+        // Don't clear password — lets browser offer to save credentials
         showApp(data.name);
       } catch(e) {
         errEl.textContent = 'Cannot connect to server.';
@@ -652,7 +721,7 @@
           return;
         }
         // Auto sign in after successful signup
-        document.getElementById('loginPassword').value = '';
+        // Don't clear password — lets browser offer to save credentials
         document.getElementById('signupInviteCode').value = '';
         toggleSignup(false);
         showApp(data.name);
