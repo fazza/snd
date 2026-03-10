@@ -383,6 +383,7 @@
       color: var(--gold); cursor: pointer; text-decoration: underline;
     }
     .signup-only { display: none; }
+    .login-only  { display: inline; }
     .login-card.signup-mode .signup-only { display: block; }
     .login-card.signup-mode .login-only  { display: none; }
     /* ── User badge in nav ── */
@@ -396,6 +397,8 @@
   </style>
 </head>
 <body>
+
+  <div id="appContent" style="visibility:hidden;display:contents">
 
   <header>
     <div class="flag-icon">⛳</div>
@@ -492,6 +495,8 @@
   </div>
 
 
+  </div><!-- /appContent -->
+
   <!-- Login overlay -->
   <div class="login-overlay" id="loginOverlay">
     <div style="text-align:center;margin-bottom:28px">
@@ -562,11 +567,13 @@
 
     function showLogin() {
       document.getElementById('loginOverlay').classList.add('open');
+      document.getElementById('appContent').style.visibility = 'hidden';
       setTimeout(() => document.getElementById('loginUsername').focus(), 100);
     }
 
     function showApp(name) {
       document.getElementById('loginOverlay').classList.remove('open');
+      document.getElementById('appContent').style.visibility = 'visible';
       const badge = document.getElementById('userBadgeName');
       if (badge) badge.textContent = name || 'Member';
       loadEvents();
