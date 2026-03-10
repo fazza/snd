@@ -374,6 +374,17 @@
     }
     .btn-login:hover:not(:disabled) { border-color: var(--gold); transform: translateY(-1px); }
     .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* ── Sign-up toggle ── */
+    .login-toggle {
+      text-align: center; margin-top: 14px;
+      font-size: 0.68rem; color: rgba(245,240,232,0.35);
+    }
+    .login-toggle a {
+      color: var(--gold); cursor: pointer; text-decoration: underline;
+    }
+    .signup-only { display: none; }
+    .login-card.signup-mode .signup-only { display: block; }
+    .login-card.signup-mode .login-only  { display: none; }
     /* ── User badge in nav ── */
     .user-badge {
       font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(245,240,232,0.4);
@@ -506,8 +517,20 @@
           <label>Password</label>
           <input id="loginPassword" type="password" placeholder="Your club password" autocomplete="current-password">
         </div>
+        <div class="login-field signup-only">
+          <label>Your Name</label>
+          <input id="signupName" type="text" placeholder="e.g. Dan Pryor" autocomplete="name">
+        </div>
+        <div class="login-field signup-only">
+          <label>Invite Code</label>
+          <input id="signupInviteCode" type="password" placeholder="Ask Ross for this">
+        </div>
         <div class="login-error" id="loginError"></div>
         <button class="btn-login" id="btnLogin" onclick="doLogin()">Sign In</button>
+        <div class="login-toggle">
+          <span class="login-only">New user? <a onclick="toggleSignup(true)">Create account</a></span>
+          <span class="signup-only">Already have an account? <a onclick="toggleSignup(false)">Sign in</a></span>
+        </div>
       </div>
     </div>
   </div>
@@ -549,7 +572,27 @@
       loadEvents();
     }
 
+    let _signupMode = false;
+
+    function toggleSignup(on) {
+      _signupMode = on;
+      const card  = document.querySelector('.login-card');
+      const hdr   = document.querySelector('.login-header h2');
+      const btn   = document.getElementById('btnLogin');
+      if (on) {
+        card.classList.add('signup-mode');
+        hdr.textContent  = 'Create Account';
+        btn.textContent  = 'Create Account';
+      } else {
+        card.classList.remove('signup-mode');
+        hdr.textContent  = 'Sign In';
+        btn.textContent  = 'Sign In';
+      }
+      document.getElementById('loginError').textContent = '';
+    }
+
     async function doLogin() {
+      if (_signupMode) { doSignup(); return; }
       const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
       const errEl    = document.getElementById('loginError');
@@ -577,6 +620,41 @@
       }
     }
 
+    async function doSignup() {
+      const username   = document.getElementById('loginUsername').value.trim();
+      const password   = document.getElementById('loginPassword').value;
+      const name       = document.getElementById('signupName').value.trim();
+      const inviteCode = document.getElementById('signupInviteCode').value;
+      const errEl      = document.getElementById('loginError');
+      const btn        = document.getElementById('btnLogin');
+      errEl.textContent = '';
+      if (!username || !password || !name || !inviteCode) {
+        errEl.textContent = 'Please fill in all fields.'; return;
+      }
+      btn.textContent = 'Creating account…'; btn.disabled = true;
+      try {
+        const res  = await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, name, invite_code: inviteCode })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Sign-up failed.';
+          btn.textContent = 'Create Account'; btn.disabled = false;
+          return;
+        }
+        // Auto sign in after successful signup
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('signupInviteCode').value = '';
+        toggleSignup(false);
+        showApp(data.name);
+      } catch(e) {
+        errEl.textContent = 'Cannot connect to server.';
+        btn.textContent = 'Create Account'; btn.disabled = false;
+      }
+    }
+
     async function doLogout() {
       try { await fetch('/logout', { method: 'POST' }); } catch(e) {}
       // Reset all in-memory state
@@ -587,6 +665,7 @@
       document.getElementById('jobs-container').innerHTML = '';
       roundSelect.innerHTML = '<option value="">— Loading rounds… —</option>';
       roundSelect.disabled = true;
+      toggleSignup(false);
       document.getElementById('loginUsername').value = '';
       document.getElementById('loginError').textContent = '';
       document.getElementById('btnLogin').textContent = 'Sign In';
@@ -594,7 +673,7 @@
       showLogin();
     }
 
-    // Allow Enter key on login form
+    // Allow Enter key on login/signup form
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && document.getElementById('loginOverlay').classList.contains('open')) {
         doLogin();

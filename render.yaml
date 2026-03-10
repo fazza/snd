@@ -1,19 +1,15 @@
 services:
   - type: web
-    name: roseville-golf-booking
+    name: golf-booking-bot
     runtime: docker
-    plan: starter          # cheapest paid plan — free tier sleeps after 15 min
-    region: singapore      # closest to Sydney
+    plan: free
+    region: singapore
     dockerfilePath: ./Dockerfile
-
-    # Persistent disk for preferences + member cache
-    disk:
-      name: golf-data
-      mountPath: /data
-      sizeGB: 1
 
     envVars:
       - key: SECRET_KEY
-        generateValue: true   # Render auto-generates a secure random value
-      - key: DATA_DIR
-        value: /data
+        generateValue: true
+      - key: USERS_JSON
+        sync: false        # Set in Render dashboard — your initial users
+      - key: MAX_USERS
+        value: "4"         # Maximum number of accounts allowed

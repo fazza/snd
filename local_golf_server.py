@@ -14,10 +14,15 @@ app = Flask(__name__)
 # Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"
 app.secret_key = os.environ.get('SECRET_KEY', '8c8c3cb14d3eb9a19082497b1953f2d499ad4b084b3d2634a1f66be26002682d')
 
-# On Render, DATA_DIR points to the persistent disk mount (/data).
-# Locally it falls back to the script's own directory.
+# ── Invite code — set INVITE_CODE env var in Render dashboard ───────────────
+# Anyone with this code can create an account. Keep it secret.
+INVITE_CODE = os.environ.get('INVITE_CODE', 'StriclyNoDickheads')
+MAX_USERS   = int(os.environ.get('MAX_USERS', '4'))  # max accounts allowed
+
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR  = os.environ.get('DATA_DIR', BASE_DIR)
+# On free Render tier there is no persistent disk — use /tmp for cache files
+# so they survive within a session but reset on redeploy (acceptable for free tier)
+DATA_DIR  = os.environ.get('DATA_DIR', '/tmp')
 MEMBERS_CACHE_FILE = os.path.join(DATA_DIR, 'member_cache.json')
 
 # ── User config ──────────────────────────────────────────────────────────────
@@ -25,11 +30,31 @@ MEMBERS_CACHE_FILE = os.path.join(DATA_DIR, 'member_cache.json')
 # Falls back to the hardcoded defaults if the file doesn't exist.
 USERS_FILE = os.path.join(DATA_DIR, 'users.json')
 
-HARDCODED_USERS = {
-    "4291": {"password": "NewcastleTaree1!", "name": "Ross Farrelly"},
-}
+# Hardcoded fallback — only used if USERS_JSON env var and users.json are both absent.
+# Set USERS_JSON env var in Render dashboard instead of relying on this.
+HARDCODED_USERS = {}
 
 def load_users():
+    # First priority: USERS_JSON environment variable (best for Render free tier)
+    env_users = os.environ.get('USERS_JSON', '').strip()
+    base = {}
+    if env_users:
+        try:
+            base = json.loads(env_users)
+        except Exception as e:
+            print(f"[AUTH] Could not parse USERS_JSON env var: {e}")
+    # Merge in any runtime-registered users (saved during signup on free tier)
+    tmp_file = os.path.join('/tmp', 'users_runtime.json')
+    if os.path.exists(tmp_file):
+        try:
+            with open(tmp_file) as f:
+                runtime = json.load(f)
+            base.update(runtime)
+        except Exception as e:
+            print(f"[AUTH] Could not load runtime users: {e}")
+    if base:
+        return base
+    # Fall back to users.json on disk
     try:
         if os.path.exists(USERS_FILE):
             with open(USERS_FILE) as f:
@@ -118,6 +143,53 @@ def do_logout():
     session.clear()
     print(f"[AUTH] Logout: {username}")
     return jsonify({'status': 'ok'})
+
+@app.route('/signup', methods=['POST'])
+def do_signup():
+    if not INVITE_CODE:
+        return jsonify({'error': 'Sign-up is not enabled on this server.'}), 403
+
+    data        = request.get_json(silent=True) or {}
+    username    = str(data.get('username', '')).strip()
+    password    = str(data.get('password', '')).strip()
+    name        = str(data.get('name', '')).strip()
+    invite_code = str(data.get('invite_code', '')).strip()
+
+    if not all([username, password, name, invite_code]):
+        return jsonify({'error': 'All fields are required.'}), 400
+    if invite_code != INVITE_CODE:
+        return jsonify({'error': 'Invalid invite code.'}), 403
+
+    users = load_users()
+    if str(username) in users:
+        return jsonify({'error': 'That member number is already registered.'}), 409
+    if len(users) >= MAX_USERS:
+        return jsonify({'error': f'Maximum number of users ({MAX_USERS}) reached.'}), 403
+
+    # Save new user — write back to users file or build updated USERS_JSON
+    users[str(username)] = {'password': password, 'name': name}
+
+    # Try to persist to users.json (works locally or with a disk mount)
+    try:
+        os.makedirs(os.path.dirname(USERS_FILE) or '.', exist_ok=True)
+        with open(USERS_FILE, 'w') as f:
+            json.dump(users, f, indent=2)
+        print(f"[AUTH] New user saved to {USERS_FILE}: {username} ({name})")
+    except Exception as e:
+        # On free Render tier with no disk, save to /tmp as fallback
+        tmp_file = os.path.join('/tmp', 'users_runtime.json')
+        with open(tmp_file, 'w') as f:
+            json.dump(users, f, indent=2)
+        print(f"[AUTH] New user saved to {tmp_file}: {username} ({name})")
+
+    # Auto log in
+    session.permanent  = True
+    session['username'] = username
+    session['password'] = password
+    session['name']     = name
+    print(f"[AUTH] Sign-up + auto-login: {username} ({name})")
+    return jsonify({'status': 'ok', 'name': name})
+
 
 @app.route('/me')
 def me():
