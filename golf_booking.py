@@ -168,7 +168,10 @@ def main():
             cur = driver.current_url
             if 'booking_resource_id' in cur:
                 clean_url = _re_nav.sub(r'[&?]booking_resource_id=[^&]*', '', cur)
-                clean_url = _re_nav.sub(r'\?&', '?', clean_url).rstrip('?&')
+                clean_url = _re_nav.sub(r'\?&+', '?', clean_url)
+                clean_url = _re_nav.sub(r'&&+', '&', clean_url)
+                clean_url = _re_nav.sub(r'\.xhtml&', '.xhtml?', clean_url)
+                clean_url = clean_url.rstrip('?&')
                 print(f"   Stripping booking_resource_id → {clean_url}")
                 driver.get(clean_url)
                 _nav_time.sleep(1)

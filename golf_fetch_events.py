@@ -92,8 +92,11 @@ def main():
             cur = driver.current_url
             if 'booking_resource_id' in cur:
                 clean_url = _re_url.sub(r'[&?]booking_resource_id=[^&]*', '', cur)
-                # Clean up any dangling ? or & 
-                clean_url = _re_url.sub(r'\?&', '?', clean_url).rstrip('?&')
+                # Fix any resulting &&, ?&, &? or leading & after the path
+                clean_url = _re_url.sub(r'\?&+', '?', clean_url)   # ?& or ?&& → ?
+                clean_url = _re_url.sub(r'&&+', '&', clean_url)    # && → &
+                clean_url = _re_url.sub(r'\.xhtml&', '.xhtml?', clean_url)  # xhtml& → xhtml?
+                clean_url = clean_url.rstrip('?&')
                 print(f"Stripping booking_resource_id, navigating to: {clean_url}", file=sys.stderr)
                 driver.get(clean_url)
                 _t.sleep(1)
