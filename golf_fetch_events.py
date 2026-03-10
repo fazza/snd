@@ -85,6 +85,26 @@ def main():
 
         # Wait for React to render the event list
         import time as _t
+        import re as _re_url
+        for _ in range(60):
+            # If the page redirected to miclub with booking_resource_id, strip it
+            # so we see ALL events (not filtered to one resource)
+            cur = driver.current_url
+            if 'booking_resource_id' in cur:
+                clean_url = _re_url.sub(r'[&?]booking_resource_id=[^&]*', '', cur)
+                # Clean up any dangling ? or & 
+                clean_url = _re_url.sub(r'\?&', '?', clean_url).rstrip('?&')
+                print(f"Stripping booking_resource_id, navigating to: {clean_url}", file=sys.stderr)
+                driver.get(clean_url)
+                _t.sleep(1)
+                break
+            spans = driver.find_elements(By.CSS_SELECTOR,
+                "span.eventStatusOpen, span.eventStatusClosed, span.eventStatusLocked")
+            if spans:
+                break
+            _t.sleep(0.3)
+
+        # Now wait up to 18s for events to appear
         for _ in range(60):
             spans = driver.find_elements(By.CSS_SELECTOR,
                 "span.eventStatusOpen, span.eventStatusClosed, span.eventStatusLocked")

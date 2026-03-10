@@ -156,20 +156,27 @@ def main():
         wait.until(EC.url_changes(LOGIN_URL))
         print(f"✅ Login successful!")
 
-        # ── Step 2: Navigate to Golf Services and click Book A Round ──
-        GOLF_SERVICES = "https://www.rosevillegolf.com.au/group/pages/golf-services"
-        print(f"\nNavigating to Golf Services page...")
-        driver.get(GOLF_SERVICES)
+        # ── Step 2: Navigate to Book A Round ──────────────────
+        import time as _nav_time
+        import re as _re_nav
+        print(f"\nNavigating to Book A Round page...")
+        driver.get(BOOK_A_ROUND)
 
-        book_link = wait.until(EC.element_to_be_clickable((
-            By.XPATH,
-            "//a[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'book a round')]"
-            " | //a[contains(@href,'book-a-round')]"
-            " | //a[contains(@href,'booking')]"
-            " | //a[contains(@href,'eventList')]"
-        )))
-        print(f"   Clicking: '{book_link.text}' -> {book_link.get_attribute('href')}")
-        driver.execute_script("arguments[0].click();", book_link)
+        # The page may redirect to miclub with a booking_resource_id that filters
+        # to a specific resource.  Strip it so we see all events.
+        for _ in range(30):
+            cur = driver.current_url
+            if 'booking_resource_id' in cur:
+                clean_url = _re_nav.sub(r'[&?]booking_resource_id=[^&]*', '', cur)
+                clean_url = _re_nav.sub(r'\?&', '?', clean_url).rstrip('?&')
+                print(f"   Stripping booking_resource_id → {clean_url}")
+                driver.get(clean_url)
+                _nav_time.sleep(1)
+                break
+            if driver.find_elements(By.CSS_SELECTOR,
+                    "span.eventStatusOpen, span.eventStatusLocked, span.eventStatusClosed"):
+                break
+            _nav_time.sleep(0.3)
 
         wait.until(EC.presence_of_element_located((
             By.CSS_SELECTOR, "span.eventStatusOpen, span.eventStatusLocked, span.eventStatusClosed"
@@ -203,7 +210,7 @@ def main():
             while _poll_time.time() - poll_start < POLL_TIMEOUT:
                 try:
                     if selected_event_id:
-                        event_url = f"https://roseville.miclub.com.au/members/bookings/open/event.msp?booking_event_id={selected_event_id}&booking_resource_id=3000000"
+                        event_url = f"https://roseville.miclub.com.au/members/bookings/open/event.msp?booking_event_id={selected_event_id}"
                         driver.get(event_url)
                     else:
                         driver.get(BOOK_A_ROUND)
@@ -223,7 +230,7 @@ def main():
         else:
             # ── Immediate mode: go directly to event page ────────
             if selected_event_id:
-                event_url = f"https://roseville.miclub.com.au/members/bookings/open/event.msp?booking_event_id={selected_event_id}&booking_resource_id=3000000"
+                event_url = f"https://roseville.miclub.com.au/members/bookings/open/event.msp?booking_event_id={selected_event_id}"
                 print(f"\n   Navigating directly to event URL...")
                 driver.get(event_url)
             else:
