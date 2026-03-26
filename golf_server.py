@@ -489,6 +489,13 @@ def debug():
     except Exception as e:
         checks['selenium_launch'] = f'FAILED: {e}'
         checks['selenium_traceback'] = traceback.format_exc()
+    # Check if rosevillegolf.com.au is reachable
+    try:
+        import urllib.request
+        req = urllib.request.urlopen('https://www.rosevillegolf.com.au', timeout=10)
+        checks['roseville_reachable'] = f'OK ({req.status})'
+    except Exception as e:
+        checks['roseville_reachable'] = f'FAILED: {e}'
     return jsonify(checks)
 
 if __name__ == '__main__':
