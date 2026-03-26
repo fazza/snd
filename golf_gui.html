@@ -449,6 +449,7 @@
             <option value="">— Loading rounds… —</option>
           </select>
         </div>
+        <pre id="eventsError" style="display:none;margin-top:10px;padding:10px;background:rgba(200,60,60,0.15);border:1px solid rgba(200,60,60,0.3);border-radius:3px;font-size:0.65rem;color:#e07070;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow-y:auto"></pre>
         <button class="reload-btn" id="reloadBtn" onclick="loadEvents()">
           <span class="reload-icon">↻</span>
           <span id="reloadText">Refresh rounds</span>
@@ -833,9 +834,13 @@
         const res  = await fetch('/events');
         const data = await res.json();
         if (data.error) {
-          roundSelect.innerHTML = `<option value="">⚠️ Error: ${data.error}</option>`;
+          roundSelect.innerHTML = `<option value="">⚠️ Error loading rounds — see below</option>`;
+          const errBox = document.getElementById('eventsError');
+          if (errBox) { errBox.style.display = 'block'; errBox.textContent = data.error; }
           return;
         }
+        const errBox = document.getElementById('eventsError');
+        if (errBox) errBox.style.display = 'none';
         eventsData = data.events;
         roundSelect.innerHTML = '<option value="">— Select a round —</option>';
         if (!eventsData.length) {

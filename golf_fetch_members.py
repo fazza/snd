@@ -39,6 +39,11 @@ def get_driver():
     opts.add_argument("--disable-gpu")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--no-zygote")
+    opts.add_argument("--disable-setuid-sandbox")
+    chrome_bin = os.environ.get('CHROME_BIN')
+    if chrome_bin:
+        opts.binary_location = chrome_bin
     opts.add_argument("--disable-blink-features=AutomationControlled")
     opts.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
