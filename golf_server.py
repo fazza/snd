@@ -211,7 +211,7 @@ def get_events():
         import json as _json
         script_path = os.path.join(BASE_DIR, 'golf_fetch_events.py')
         result = subprocess.run([sys.executable, '-u', script_path],
-                                capture_output=True, text=True, timeout=60,
+                                capture_output=True, text=True, timeout=120,
                                 env=creds_env())
         for line in result.stdout.splitlines():
             if line.startswith('EVENTS_JSON:'):

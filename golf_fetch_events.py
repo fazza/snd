@@ -70,7 +70,7 @@ def main():
     options.add_experimental_option("useAutomationExtension", False)
 
     driver = webdriver.Chrome(options=options)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
 
     try:
         # Login
@@ -221,5 +221,6 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f"EVENTS_ERROR:{e}", file=sys.stderr)
+        import traceback
+        print(f"EVENTS_ERROR:{e}\n{traceback.format_exc()}", file=sys.stderr)
         sys.exit(1)
