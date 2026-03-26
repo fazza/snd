@@ -146,10 +146,10 @@ def main():
         # ── Step 1: Log in ───────────────────────────────────
         print(f"\nLogging in...")
         driver.get(LOGIN_URL)
-        username_field = wait.until(EC.presence_of_element_located((By.ID, USERNAME_FIELD_ID)))
+        username_field = wait.until(EC.element_to_be_clickable((By.ID, USERNAME_FIELD_ID)))
         username_field.clear()
         username_field.send_keys(USERNAME)
-        password_field = driver.find_element(By.ID, PASSWORD_FIELD_ID)
+        password_field = wait.until(EC.element_to_be_clickable((By.ID, PASSWORD_FIELD_ID)))
         password_field.clear()
         password_field.send_keys(PASSWORD)
         password_field.submit()

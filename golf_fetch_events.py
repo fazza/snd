@@ -72,10 +72,11 @@ def main():
     try:
         # Login
         driver.get(LOGIN_URL)
-        wait.until(EC.presence_of_element_located((By.ID, USERNAME_FIELD_ID)))
-        driver.find_element(By.ID, USERNAME_FIELD_ID).send_keys(USERNAME)
-        driver.find_element(By.ID, PASSWORD_FIELD_ID).send_keys(PASSWORD)
-        driver.find_element(By.ID, PASSWORD_FIELD_ID).submit()
+        username_field = wait.until(EC.element_to_be_clickable((By.ID, USERNAME_FIELD_ID)))
+        username_field.send_keys(USERNAME)
+        password_field = wait.until(EC.element_to_be_clickable((By.ID, PASSWORD_FIELD_ID)))
+        password_field.send_keys(PASSWORD)
+        password_field.submit()
         wait.until(EC.url_changes(LOGIN_URL))
 
         # Navigate directly to the booking page
