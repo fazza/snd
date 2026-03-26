@@ -458,22 +458,37 @@ def cancel_job(job_id):
 
 @app.route('/debug')
 def debug():
-    import shutil
+    import shutil, traceback
     checks = {}
-    for name, path in [('chromium', '/usr/bin/chromium'), ('google-chrome', '/usr/bin/google-chrome'),
-                        ('chromedriver', '/usr/bin/chromedriver'), ('chrome-bin-env', os.environ.get('CHROME_BIN',''))]:
-        checks[name] = os.path.exists(path) if path else 'not set'
+    checks['CHROME_BIN'] = os.environ.get('CHROME_BIN', 'not set')
     checks['which_chromium'] = shutil.which('chromium') or 'not found'
     checks['which_chromedriver'] = shutil.which('chromedriver') or 'not found'
-    checks['CHROME_BIN'] = os.environ.get('CHROME_BIN', 'not set')
-    # Try running chromium --version
-    for binary in [os.environ.get('CHROME_BIN'), '/usr/bin/chromium', '/usr/bin/google-chrome']:
-        if binary and os.path.exists(binary):
+    # Version strings
+    for binary in ['/usr/bin/chromium', '/usr/bin/chromedriver']:
+        if os.path.exists(binary):
             try:
                 r = subprocess.run([binary, '--version'], capture_output=True, text=True, timeout=5)
-                checks[f'{binary}_version'] = r.stdout.strip() or r.stderr.strip()
+                checks[f'{os.path.basename(binary)}_version'] = r.stdout.strip() or r.stderr.strip()
             except Exception as e:
-                checks[f'{binary}_version'] = f'error: {e}'
+                checks[f'{os.path.basename(binary)}_version'] = f'error: {e}'
+    # Try actually launching Chrome via Selenium
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        opts = Options()
+        opts.add_argument('--headless=new')
+        opts.add_argument('--no-sandbox')
+        opts.add_argument('--disable-dev-shm-usage')
+        opts.add_argument('--disable-gpu')
+        opts.add_argument('--no-zygote')
+        opts.add_argument('--disable-setuid-sandbox')
+        opts.binary_location = '/usr/bin/chromium'
+        driver = webdriver.Chrome(options=opts)
+        driver.quit()
+        checks['selenium_launch'] = 'OK'
+    except Exception as e:
+        checks['selenium_launch'] = f'FAILED: {e}'
+        checks['selenium_traceback'] = traceback.format_exc()
     return jsonify(checks)
 
 if __name__ == '__main__':
