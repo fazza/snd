@@ -12,7 +12,6 @@ def fix_ssl():
 
 fix_ssl()
 
-import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -54,7 +53,6 @@ def parse_event_date(day_name, day_date):
         return None
 
 def main():
-    chromedriver_autoinstaller.install()
     options = Options()
     options.add_argument("--window-size=1400,900")
     options.add_argument("--headless=new")

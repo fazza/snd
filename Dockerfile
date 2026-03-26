@@ -33,6 +33,17 @@ RUN wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-
     && rm /tmp/chrome.deb \
     && rm -rf /var/lib/apt/lists/*
 
+# Install matching ChromeDriver from Chrome for Testing
+RUN CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+') \
+    && echo "Chrome version: $CHROME_VERSION" \
+    && wget -q -O /tmp/chromedriver.zip \
+       "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" \
+    && unzip /tmp/chromedriver.zip -d /tmp/ \
+    && mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver \
+    && chmod +x /usr/local/bin/chromedriver \
+    && rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64 \
+    && chromedriver --version
+
 # Set working directory
 WORKDIR /app
 
@@ -46,7 +57,6 @@ COPY . .
 # Create data directory for persistent files (preferences, cache)
 RUN mkdir -p /data
 
-# Render sets PORT env var; default to 5001 for local
 ENV PORT=5001
 
 EXPOSE $PORT

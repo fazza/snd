@@ -15,7 +15,6 @@ def fix_ssl():
 
 fix_ssl()
 
-import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -34,7 +33,6 @@ PASSWORD_FIELD = "_com_liferay_login_web_portlet_LoginPortlet_password"
 
 
 def get_driver():
-    chromedriver_autoinstaller.install()
     opts = Options()
     opts.add_argument("--window-size=1400,900")
     opts.add_argument("--headless=new")

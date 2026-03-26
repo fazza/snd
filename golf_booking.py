@@ -35,8 +35,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-import chromedriver_autoinstaller
-
 # ── Config ──────────────────────────────────────────────
 LOGIN_URL      = "https://www.rosevillegolf.com.au/web/pages/login"
 BOOK_A_ROUND   = "https://www.rosevillegolf.com.au/group/pages/book-a-round"
@@ -110,9 +108,6 @@ def send_email(tee_time_str, event_date, success=True, players=None):
         print(f"   ⚠️  Failed to send email: {e}")
 
 def main():
-    print("Installing/verifying ChromeDriver...")
-    chromedriver_autoinstaller.install()
-
     options = Options()
     options.add_argument("--window-size=1400,900")
     options.add_argument("--headless=new")
