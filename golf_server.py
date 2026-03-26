@@ -456,6 +456,26 @@ def cancel_job(job_id):
             jobs[job_id]['queue'].put('__DONE__')
     return jsonify({'status': 'cancelled'})
 
+@app.route('/debug')
+def debug():
+    import shutil
+    checks = {}
+    for name, path in [('chromium', '/usr/bin/chromium'), ('google-chrome', '/usr/bin/google-chrome'),
+                        ('chromedriver', '/usr/bin/chromedriver'), ('chrome-bin-env', os.environ.get('CHROME_BIN',''))]:
+        checks[name] = os.path.exists(path) if path else 'not set'
+    checks['which_chromium'] = shutil.which('chromium') or 'not found'
+    checks['which_chromedriver'] = shutil.which('chromedriver') or 'not found'
+    checks['CHROME_BIN'] = os.environ.get('CHROME_BIN', 'not set')
+    # Try running chromium --version
+    for binary in [os.environ.get('CHROME_BIN'), '/usr/bin/chromium', '/usr/bin/google-chrome']:
+        if binary and os.path.exists(binary):
+            try:
+                r = subprocess.run([binary, '--version'], capture_output=True, text=True, timeout=5)
+                checks[f'{binary}_version'] = r.stdout.strip() or r.stderr.strip()
+            except Exception as e:
+                checks[f'{binary}_version'] = f'error: {e}'
+    return jsonify(checks)
+
 if __name__ == '__main__':
     print("🏌️  Roseville Golf Booking GUI")
     print("   Open http://127.0.0.1:5001 in your browser")
